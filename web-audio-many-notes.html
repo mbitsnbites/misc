@@ -1,0 +1,59 @@
+<html>
+<head>
+<script type="text/javascript">
+"use strict";
+(function () {
+  function CreateAudioBuffer() {
+    var sampleRate = 44100, freq = 220, len = Math.round(sampleRate / freq);
+    var data = new Float32Array(len);
+    for (var k = 0; k < len; ++k) {
+      data[k] = 2 * k / len - 1;
+    }
+    var buf = ctx.createBuffer(1, len, sampleRate);
+    buf.copyToChannel(data, 0);
+    return buf;
+  }
+
+  function PlayBuffer(buffer, t, rate) {
+    var srcNode = ctx.createBufferSource();
+    srcNode.loop = true;
+    srcNode.playbackRate.value = rate;
+    srcNode.buffer = buffer;
+
+    // Create a gain node (for the envelope).
+    var gainNode = ctx.createGain(), gain = gainNode.gain;
+    srcNode.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    // Create the ASR volume ramps.
+    var attack = 0.02, sustain = 0.05, release = 0.3;
+    gain.value = 0;
+    gain.setValueAtTime(0, t);
+    gain.linearRampToValueAtTime(0.5, t + attack);
+    gain.setValueAtTime(0.5, t + attack + sustain);
+    gain.exponentialRampToValueAtTime(0.05, t + attack + sustain + release * 0.7);
+    gain.linearRampToValueAtTime(0, t + attack + sustain + release);
+
+    // Start the source at the given time.
+    srcNode.start(t);
+  }
+
+  // Create an audio context and an audio buffer.
+  var ctx = new AudioContext;
+  var buf = CreateAudioBuffer();
+
+  // Play a bunch of polyphonic notes.
+  var startT = ctx.currentTime + 0.1;
+  var dT = 0.1;
+  var notes = [0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 7, 0, 0, 0, 7, 0];
+  for (var k = 0; k < 256; ++k) {
+    PlayBuffer(buf, startT + k * dT, Math.pow(2, notes[k % notes.length] / 12));
+  }
+})();
+</script>
+</head>
+<body>
+<h1>BUG: Playing many nodes</h1>
+</body>
+</html>
+
